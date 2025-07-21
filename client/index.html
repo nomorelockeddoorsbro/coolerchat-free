@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureChat - Zero Trace Messaging</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .message-bubble {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.8); }
+        }
+        .typing-indicator {
+            animation: pulse 1.5s infinite;
+        }
+        .connection-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .connected { background-color: #10b981; }
+        .disconnected { background-color: #ef4444; }
+        .connecting { background-color: #f59e0b; animation: pulse 1s infinite; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <!-- Main Container -->
+    <div id="app" class="w-full max-w-4xl h-screen max-h-[800px] glass-effect rounded-2xl shadow-2xl overflow-hidden">
+        
+        <!-- Welcome Screen -->
+        <div id="welcomeScreen" class="h-full flex flex-col items-center justify-center p-8 text-white">
+            <div class="text-center mb-8">
+                <i class="fas fa-shield-alt text-6xl mb-4 text-blue-300"></i>
+                <h1 class="text-4xl font-bold mb-2">SecureChat</h1>
+                <p class="text-xl text-blue-200 mb-8">Zero-trace messaging with end-to-end encryption</p>
+                <div class="space-y-4 text-sm text-blue-100 mb-8">
+                    <div class="flex items-center justify-center">
+                        <i class="fas fa-lock mr-2"></i>
+                        <span>Messages are encrypted and never stored</span>
+                    </div>
+                    <div class="flex items-center justify-center">
+                        <i class="fas fa-eye-slash mr-2"></i>
+                        <span>No registration required - completely anonymous</span>
+                    </div>
+                    <div class="flex items-center justify-center">
+                        <i class="fas fa-phone mr-2"></i>
+                        <span>Secure voice and video calling</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="space-y-4 w-full max-w-md">
+                <button id="createGroupBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105">
+                    <i class="fas fa-plus mr-2"></i>
+                    Create New Chat Room
+                </button>
+                
+                <div class="flex space-x-2">
+                    <input id="groupIdInput" type="text" placeholder="Enter room ID to join..." 
+                           class="flex-1 bg-white bg-opacity-20 text-white placeholder-blue-200 border border-white border-opacity-30 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <button id="joinGroupBtn" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg transition duration-300">
+                        <i class="fas fa-sign-in-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Interface -->
+        <div id="chatInterface" class="h-full flex flex-col hidden">
+            <!-- Header -->
+            <div class="bg-black bg-opacity-20 p-4 flex items-center justify-between text-white">
+                <div class="flex items-center">
+                    <span id="connectionStatus" class="connection-status disconnected"></span>
+                    <span class="font-semibold">Room: <span id="currentGroupId" class="font-mono text-blue-300"></span></span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button id="voiceCallBtn" class="bg-green-600 hover:bg-green-700 p-2 rounded-lg transition duration-300" title="Voice Call">
+                        <i class="fas fa-phone"></i>
+                    </button>
+                    <button id="videoCallBtn" class="bg-blue-600 hover:bg-blue-700 p-2 rounded-lg transition duration-300" title="Video Call">
+                        <i class="fas fa-video"></i>
+                    </button>
+                    <button id="screenShareBtn" class="bg-purple-600 hover:bg-purple-700 p-2 rounded-lg transition duration-300" title="Share Screen">
+                        <i class="fas fa-desktop"></i>
+                    </button>
+                    <button id="deleteAllBtn" class="bg-orange-600 hover:bg-orange-700 p-2 rounded-lg transition duration-300" title="Delete All Messages">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                    <button id="leaveGroupBtn" class="bg-red-600 hover:bg-red-700 p-2 rounded-lg transition duration-300" title="Leave Room">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Messages Area -->
+            <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3">
+                <!-- Messages will be dynamically added here -->
+            </div>
+
+            <!-- Typing Indicator -->
+            <div id="typingIndicator" class="px-4 py-2 text-blue-200 text-sm hidden">
+                <i class="fas fa-circle typing-indicator"></i>
+                <i class="fas fa-circle typing-indicator" style="animation-delay: 0.2s;"></i>
+                <i class="fas fa-circle typing-indicator" style="animation-delay: 0.4s;"></i>
+                <span class="ml-2">Someone is typing...</span>
+            </div>
+
+            <!-- Message Input -->
+            <div class="bg-black bg-opacity-20 p-4">
+                <div class="flex space-x-3">
+                    <input id="messageInput" type="text" placeholder="Type your encrypted message..." 
+                           class="flex-1 bg-white bg-opacity-20 text-white placeholder-blue-200 border border-white border-opacity-30 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                           maxlength="500">
+                    <button id="sendBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition duration-300">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div class="mt-2 text-xs text-blue-200 flex justify-between">
+                    <span>Messages auto-delete after 1 hour</span>
+                    <div class="text-right">
+                        <div id="messageCount">0/10 messages (free)</div>
+                        <div id="callCount">0/2 calls (free)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Call Interface -->
+        <div id="callInterface" class="h-full flex flex-col items-center justify-center text-white hidden">
+            <div class="text-center mb-8">
+                <div id="callStatus" class="text-2xl font-semibold mb-4">Connecting...</div>
+                <div id="callTimer" class="text-lg text-blue-200">00:00</div>
+            </div>
+            
+            <div id="videoContainer" class="mb-8 hidden">
+                <video id="localVideo" class="w-64 h-48 bg-black rounded-lg mr-4" autoplay muted></video>
+                <video id="remoteVideo" class="w-64 h-48 bg-black rounded-lg" autoplay></video>
+            </div>
+            
+            <div class="flex space-x-4">
+                <button id="muteBtn" class="bg-gray-600 hover:bg-gray-700 p-3 rounded-full transition duration-300">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <button id="endCallBtn" class="bg-red-600 hover:bg-red-700 p-3 rounded-full transition duration-300">
+                    <i class="fas fa-phone-slash"></i>
+                </button>
+                <button id="cameraBtn" class="bg-gray-600 hover:bg-gray-700 p-3 rounded-full transition duration-300 hidden">
+                    <i class="fas fa-video"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Payment Modal -->
+        <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <h3 class="text-xl font-bold mb-4">Upgrade to Continue</h3>
+                <p class="text-gray-600 mb-4">You've reached the free message limit. Upgrade for unlimited messaging.</p>
+                <div class="mb-4">
+                    <div class="text-2xl font-bold text-blue-600">$2.99</div>
+                    <div class="text-sm text-gray-500">One-time payment for unlimited messages and calls</div>
+                </div>
+                <div class="flex space-x-3">
+                    <button id="payBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+                        Pay Now
+                    </button>
+                    <button id="cancelPayBtn" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-2 px-4 rounded-lg transition duration-300">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+    <script type="module" src="./features/crypto.js"></script>
+    <script type="module" src="./features/voice.js"></script>
+    <script type="module" src="./features/canvas.js"></script>
+</body>
+</html>
